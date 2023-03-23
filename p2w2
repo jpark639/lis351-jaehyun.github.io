@@ -1,0 +1,491 @@
+import java.util.LinkedList;
+import java.util.Stack;
+
+
+public class RedBlackTree<T extends Comparable<T>> implements SortedCollectionInterface<T> {
+
+    protected static class Node<T> {
+        public T data;
+        public int blackHeight = 0;
+
+        @SuppressWarnings("unchecked")
+        public Node<T>[] context = (Node<T>[]) new Node[3];
+
+        public Node(T data) {
+            this.data = data;
+        }
+
+        /**
+         * @return true when this node has a parent and is the right child of
+         *         that parent, otherwise return false
+         */
+        public boolean isRightChild() {
+            return context[0] != null && context[0].context[2] == this;
+        }
+
+        public boolean isLeftChild() {
+            return context[0] != null && context[0].context[1] == this;
+        }
+
+    }
+
+    protected Node<T> root; 
+    protected int size = 0; 
+
+
+
+
+
+
+
+    /**
+
+     * @param data to be added into this binary search tree
+     * @return true if the value was inserted, false if not
+     * @throws NullPointerException     when the provided data argument is null
+     * @throws IllegalArgumentException when data is already contained in the tree
+     */
+    public boolean insert(T data) throws NullPointerException, IllegalArgumentException {
+
+        if (data == null)
+            throw new NullPointerException(
+                    "This RedBlackTree cannot store null references.");
+    
+        Node<T> newNode = new Node<>(data);
+        if (this.root == null) {
+    
+            root = newNode;
+            size++;
+            return true;
+        } else {
+    
+            Node<T> current = this.root;
+            while (true) {
+                int compare = newNode.data.compareTo(current.data);
+                if (compare == 0) {
+                    throw new IllegalArgumentException("This RedBlackTree already contains value " + data.toString());
+                } else if (compare < 0) {
+    
+                    if (current.context[1] == null) {
+    
+                        current.context[1] = newNode;
+                        newNode.context[0] = current;
+                        newNode.blackHeight = 1;
+                        this.size++;
+                        enforceRBTreePropertiesAfterInsert(newNode); // <-- add this line
+                        return true;
+                    } else {
+    
+                        current = current.context[1];
+                    }
+                } else {
+    
+                    if (current.context[2] == null) {
+    
+                        current.context[2] = newNode;
+                        newNode.context[0] = current;
+                        this.size++;
+                        enforceRBTreePropertiesAfterInsert(newNode); // <-- add this line
+                        return true;
+                    } else {
+    
+                        current = current.context[2];
+                    }
+                }
+            }
+        }
+    }
+    
+
+    /**
+ * Fixes any red-black tree property violations that may have been introduced by
+ * inserting the given red node.
+ *
+ * @param node The newly inserted red node that may have caused property violations.
+ */
+protected void enforceRBTreePropertiesAfterInsert(Node<T> node) {
+    // Fix any red-black tree property violations
+    while (node != root && node.context[0].blackHeight == 0) {
+        Node<T> parent = node.context[0];
+        Node<T> grandparent = parent.context[0];
+        Node<T> uncle = parent.isRightChild() ? grandparent.context[1] : grandparent.context[2];
+
+        if (uncle != null && uncle.blackHeight == 0) {
+            // Case 1: Re-coloring
+            parent.blackHeight = 1;
+            uncle.blackHeight = 1;
+            grandparent.blackHeight = 0;
+            node = grandparent;
+        } else {
+            if (parent.isRightChild()) {
+                if (node.isRightChild()) {
+                    // Case 2: Left rotation
+                    rotateLeft(grandparent);
+                } else {
+                    // Case 3: Right-left rotation
+                    rotateRight(parent);
+                    rotateLeft(grandparent);
+                }
+            } else {
+                if (node.isRightChild()) {
+                    // Case 3: Left-right rotation
+                    rotateLeft(parent);
+                    rotateRight(grandparent);
+                } else {
+                    // Case 2: Right rotation
+                    rotateRight(grandparent);
+                }
+            }
+
+            grandparent.blackHeight = 0;
+            parent.blackHeight = 1;
+            uncle.blackHeight = 1;
+            node = parent;
+        }
+    }
+
+    private void rotateLeft(Node<T> node) {
+    Node<T> rightChild = node.context[1];
+    Node<T> parent = node.context[0];
+
+    // Make the right child's left subtree the node's right subtree
+    node.context[1] = rightChild.context[0];
+    if (node.context[1] != null) {
+        node.context[1].context[0] = node;
+    }
+
+    // Make the node's parent be the right child
+    rightChild.context[0] = node.context[0];
+    if (rightChild.context[0] == null) {
+        root = rightChild;
+    } else if (node == node.context[0].context[0]) {
+        node.context[0].context[0] = rightChild;
+    } else {
+        node.context[0].context[1] = rightChild;
+    }
+
+    // Make the node the left child of the right child
+    rightChild.context[0] = node;
+    node.context[0] = rightChild;
+}
+
+private void rotateRight(Node<T> node) {
+    Node<T> leftChild = node.context[0];
+    Node<T> parent = node.context[0];
+
+    // Make the left child's right subtree the node's left subtree
+    node.context[0] = leftChild.context[1];
+    if (node.context[0] != null) {
+        node.context[0].context[0] = node;
+    }
+
+    // Make the node's parent be the left child
+    leftChild.context[0] = node.context[0];
+    if (leftChild.context[0] == null) {
+        root = leftChild;
+    } else if (node == node.context[0].context[1]) {
+        node.context[0].context[1] = leftChild;
+    } else {
+        node.context[0].context[0] = leftChild;
+    }
+
+    // Make the node the right child of the left child
+    leftChild.context[1] = node;
+    node.context[0] = leftChild;
+}
+
+    // Set the color of the root node to black
+    root.blackHeight = 1;
+}
+
+private void rotateLeft(Node<T> node) {
+    Node<T> rightChild = node.context[1];
+    Node<T> parent = node.context[0];
+
+    // Make the right child's left subtree the node's right subtree
+    node.context[1] = rightChild.context[0];
+    if (node.context[1] != null) {
+        node.context[1].context[0] = node;
+    }
+
+    // Make the node's parent be the right child
+    rightChild.context[0] = node.context[0];
+    if (rightChild.context[0] == null) {
+        root = rightChild;
+    } else if (node == node.context[0].context[0]) {
+        node.context[0].context[0] = rightChild;
+    } else {
+        node.context[0].context[1] = rightChild;
+    }
+
+    // Make the node the left child of the right child
+    rightChild.context[0] = node;
+    node.context[0] = rightChild;
+}
+
+private void rotateRight(Node<T> node) {
+    Node<T> leftChild = node.context[0];
+    Node<T> parent = node.context[0];
+
+    // Make the left child's right subtree the node's left subtree
+    node.context[0] = leftChild.context[1];
+    if (node.context[0] != null) {
+        node.context[0].context[0] = node;
+    }
+
+    // Make the node's parent be the left child
+    leftChild.context[0] = node.context[0];
+    if (leftChild.context[0] == null) {
+        root = leftChild;
+    } else if (node == node.context[0].context[1]) {
+        node.context[0].context[1] = leftChild;
+    } else {
+        node.context[0].context[0] = leftChild;
+    }
+
+    // Make the node the right child of the left child
+    leftChild.context[1] = node;
+    node.context[0] = leftChild;
+}
+
+
+
+    /** 
+     * @param child  is the node being rotated from child to parent position
+     *               (between these two node arguments)
+     * @param parent is the node being rotated from parent to child position
+     *               (between these two node arguments)
+     * @throws IllegalArgumentException when the provided child and parent
+     *                                  node references are not initially
+     *                                  (pre-rotation) related that way
+     */
+    private void rotate(Node<T> child, Node<T> parent) throws IllegalArgumentException {
+        if (child == null || parent == null) {
+            throw new IllegalArgumentException("Child and parent nodes must be non-null");
+        }
+    
+        if (child != parent.context[1] && child != parent.context[2]) {
+            throw new IllegalArgumentException("Child must be left or right child of parent");
+        }
+    
+        Node<T> grandparent = parent.context[0];
+    
+        if (grandparent != null) {
+            if (parent == grandparent.context[1]) {
+                grandparent.context[1] = child;
+            } else {
+                grandparent.context[2] = child;
+            }
+        } else {
+            this.root = child;
+        }
+    
+        if (child == parent.context[1]) {
+            parent.context[1] = child.context[2];
+    
+            if (child.context[2] != null) {
+                child.context[2].context[0] = parent;
+            }
+    
+            child.context[2] = parent;
+        } else {
+            parent.context[2] = child.context[1];
+    
+            if (child.context[1] != null) {
+                child.context[1].context[0] = parent;
+            }
+    
+            child.context[1] = parent;
+        }
+    
+        child.context[0] = grandparent;
+        parent.context[0] = child;
+    }
+    
+
+    /**
+     * @return the number of nodes in the tree
+     */
+    public int size() {
+        return size;
+    }
+
+    /**
+     * @return true of this.size() return 0, false if this.size() > 0
+     */
+    public boolean isEmpty() {
+        return this.size() == 0;
+    }
+
+    /**
+     * @return true if the value was remove, false if it didn't exist
+     * @throws NullPointerException     when the provided data argument is null
+     * @throws IllegalArgumentException when data is not stored in the tree
+     */
+    public boolean remove(T data) throws NullPointerException, IllegalArgumentException {
+
+        if (data == null) {
+            throw new NullPointerException("This RedBlackTree cannot store null references.");
+        } else {
+            Node<T> nodeWithData = this.findNodeWithData(data);
+
+            if (nodeWithData == null) {
+                throw new IllegalArgumentException(
+                        "The following value is not in the tree and cannot be deleted: " + data.toString());
+            }
+            boolean hasRightChild = (nodeWithData.context[2] != null);
+            boolean hasLeftChild = (nodeWithData.context[1] != null);
+            if (hasRightChild && hasLeftChild) {
+
+                Node<T> successorNode = this.findMinOfRightSubtree(nodeWithData);
+
+                nodeWithData.data = successorNode.data;
+
+                if (successorNode.context[2] == null) {
+
+                    this.replaceNode(successorNode, null);
+                } else {
+
+                    this.replaceNode(successorNode, successorNode.context[2]);
+                }
+            } else if (hasRightChild) {
+
+                this.replaceNode(nodeWithData, nodeWithData.context[2]);
+            } else if (hasLeftChild) {
+
+                this.replaceNode(nodeWithData, nodeWithData.context[1]);
+            } else {
+                this.replaceNode(nodeWithData, null);
+            }
+            this.size--;
+            return true;
+        }
+    }
+
+    /**
+     * @param data the data value to test for
+     * @return true if *data* is in the tree, false if it is not in the tree
+     */
+    public boolean contains(T data) {
+        if (data == null) {
+            throw new NullPointerException("This RedBlackTree cannot store null references.");
+        } else {
+            Node<T> nodeWithData = this.findNodeWithData(data);
+            return (nodeWithData != null);
+        }
+    }
+
+    /**
+     * @param nodeToReplace   the node to replace
+     * @param replacementNode the replacement for the node (may be null)
+     */
+    protected void replaceNode(Node<T> nodeToReplace, Node<T> replacementNode) {
+        if (nodeToReplace == null) {
+            throw new NullPointerException("Cannot replace null node.");
+        }
+        if (nodeToReplace.context[0] == null) {
+            if (replacementNode != null)
+                replacementNode.context[0] = null;
+            this.root = replacementNode;
+        } else {
+            if (replacementNode != null)
+                replacementNode.context[0] = nodeToReplace.context[0];
+            if (nodeToReplace.isRightChild()) {
+                nodeToReplace.context[0].context[2] = replacementNode;
+            } else {
+                nodeToReplace.context[0].context[1] = replacementNode;
+            }
+        }
+    }
+
+    /**
+     * @param node the node to find the successor for
+     * @return the node that is the inorder successor of node
+     */
+    protected Node<T> findMinOfRightSubtree(Node<T> node) {
+        if (node.context[1] == null && node.context[2] == null) {
+            throw new IllegalArgumentException("Node must have two children");
+        }
+        Node<T> current = node.context[2];
+        while (true) {
+            if (current.context[1] == null) {
+                return current;
+            } else {
+                current = current.context[1];
+            }
+        }
+    }
+
+    /**
+     * @return the node that contains the data, or null of no such node exists
+     */
+    protected Node<T> findNodeWithData(T data) {
+        Node<T> current = this.root;
+        while (current != null) {
+            int compare = data.compareTo(current.data);
+            if (compare == 0) {
+                return current;
+            } else if (compare < 0) {
+                current = current.context[1];
+            } else {
+                current = current.context[2];
+            }
+        }
+        return null;
+    }
+
+    /**
+     * @return string containing the ordered values of this tree (in-order traversal)
+     */
+    public String toInOrderString() {
+        StringBuffer sb = new StringBuffer();
+        sb.append("[ ");
+        if (this.root != null) {
+            Stack<Node<T>> nodeStack = new Stack<>();
+            Node<T> current = this.root;
+            while (!nodeStack.isEmpty() || current != null) {
+                if (current == null) {
+                    Node<T> popped = nodeStack.pop();
+                    sb.append(popped.data.toString());
+                    if (!nodeStack.isEmpty() || popped.context[2] != null)
+                        sb.append(", ");
+                    current = popped.context[2];
+                } else {
+                    nodeStack.add(current);
+                    current = current.context[1];
+                }
+            }
+        }
+        sb.append(" ]");
+        return sb.toString();
+    }
+
+    /**
+     * @return string containing the values of this tree in level order
+     */
+    public String toLevelOrderString() {
+        StringBuffer sb = new StringBuffer();
+        sb.append("[ ");
+        if (this.root != null) {
+            LinkedList<Node<T>> q = new LinkedList<>();
+            q.add(this.root);
+            while (!q.isEmpty()) {
+                Node<T> next = q.removeFirst();
+                if (next.context[1] != null)
+                    q.add(next.context[1]);
+                if (next.context[2] != null)
+                    q.add(next.context[2]);
+                sb.append(next.data.toString());
+                if (!q.isEmpty())
+                    sb.append(", ");
+            }
+        }
+        sb.append(" ]");
+        return sb.toString();
+    }
+
+    public String toString() {
+        return "level order: " + this.toLevelOrderString() +
+                "\nin order: " + this.toInOrderString();
+    }
+}
